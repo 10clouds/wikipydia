@@ -40,28 +40,6 @@ def _run_query(args, language):
     json = simplejson.loads(search_results.read())
     return json
 
-def query_page_view_stats(title, language='en', start_date=(datetime.date.today()-datetime.timedelta(1)), end_date=datetime.date.today()):
-    """
-    Queries stats.grok.se for the daily page views for wikipedia articles
-    """
-    stats_api_url = 'http://stats.grok.se/json/%s/%s/%s'
-    earliest_date = datetime.date(2007, 01, 01)
-    query_date = max(start_date, earliest_date)
-    end_date = min(end_date, datetime.date.today())
-    total_views = 0
-    stats = {}
-    stats['monthly_views'] = {}
-    while(query_date < end_date):
-        query_date_str = query_date.strftime("%Y%m")
-        url = stats_api_url % (language, query_date_str, urllib.quote(title.encode('utf-8')))
-        search_results = urllib.urlopen(url)
-        json = simplejson.loads(search_results.read())
-        total_views += json['total_views']
-        stats['monthly_views'][query_date_str] = json
-        days_in_month = calendar.monthrange(query_date.year, query_date.month)[1]
-        query_date = query_date + datetime.timedelta(days_in_month)        
-    stats['total_views'] = total_views
-    return stats
 
 def opensearch(query, language='en'):
     """
@@ -87,14 +65,13 @@ def get_page_id(title, query_results):
            if title == normalized['from']:
               title = normalized['to']
               break
-
    for page in query_results['query']['pages']:
        if title == query_results['query']['pages'][page]['title']:
-          return query_results['query']['pages'][page]['pageid']
-   return -1
+          return str(query_results['query']['pages'][page]['pageid'])
+   return str(-1)
 
 
-def query_language_links(title, language='en', lllimit=10):
+def query_language_links(title, language='en', limit=250):
    """
    action=query,prop=langlinks
    returns a dict of inter-language links, containing the lang abbreviation
@@ -106,7 +83,7 @@ def query_language_links(title, language='en', lllimit=10):
        'prop': 'langlinks',
        'titles': title,
        'format': 'json',
-       'lllimit': lllimit
+       'lllimit': limit
    }
    json = _run_query(query_args, language)
    page_id = get_page_id(title, json)
@@ -166,6 +143,67 @@ def query_category_members(category, language='en', limit=100):
       else:
           break
    return members[0:limit]
+
+
+def query_revision_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='newer', limit=10):
+"""
+   Queries wikipeida for revisions of an article on a certain date.  
+   CCB: I'm not quite sure what I should be returning just yet...
+   """
+   url = api_url % (language)
+   query_args = {
+       'action': 'query',
+       'format': 'json',
+       'prop': 'revisions',
+       'titles': title,
+       'rvdir': direction,
+       'rvlimit': limit,
+       'rvstart': date.strftime("%Y%m%d")+time
+   }
+   json = _run_query(query_args, language)
+   return json
+
+
+def query_revision_diffs(rev_id_1, rev_id_2, language='en'):
+   """
+   Queries wikipedia for the diff between two revisions of an article 
+   CCB: I'm not quite sure what I should be returning just yet...
+   """
+   url = api_url % (language)
+   query_args = {
+       'action': 'query',
+       'format': 'json',
+       'prop': 'revisions',
+       'revids': min(rev_id_1, rev_id_2),
+       'rvdiffto': max(rev_id_1, rev_id_2)
+   }
+   json = _run_query(query_args, language)
+   return json
+
+
+def query_page_view_stats(title, language='en', start_date=(datetime.date.today()-datetime.timedelta(1)), end_date=datetime.date.today()):
+    """
+    Queries stats.grok.se for the daily page views for wikipedia articles
+    """
+    stats_api_url = 'http://stats.grok.se/json/%s/%s/%s'
+    earliest_date = datetime.date(2007, 01, 01)
+    query_date = max(start_date, earliest_date)
+    end_date = min(end_date, datetime.date.today())
+    total_views = 0
+    stats = {}
+    stats['monthly_views'] = {}
+    while(query_date < end_date):
+        query_date_str = query_date.strftime("%Y%m")
+        url = stats_api_url % (language, query_date_str, urllib.quote(title.encode('utf-8')))
+        search_results = urllib.urlopen(url)
+        json = simplejson.loads(search_results.read())
+        total_views += json['total_views']
+        stats['monthly_views'][query_date_str] = json
+        days_in_month = calendar.monthrange(query_date.year, query_date.month)[1]
+        query_date = query_date + datetime.timedelta(days_in_month)        
+    stats['total_views'] = total_views
+    return stats
+
 
 
 def query_text_raw(title, language='en'):
