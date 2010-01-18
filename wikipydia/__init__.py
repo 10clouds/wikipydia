@@ -118,7 +118,6 @@ def query_categories(title, language='en'):
           break
    return categories
 
-
 def query_category_members(category, language='en', limit=100):
    """
    action=query,prop=categories
@@ -143,6 +142,34 @@ def query_category_members(category, language='en', limit=100):
       else:
           break
    return members[0:limit]
+
+
+def query_links(title, language='en'):
+   """
+   action=query,prop=categories
+   Returns a full list of links on the page
+   """
+   url = api_url % (language)
+   query_args = {
+       'action': 'query',
+       'prop': 'links',
+       'titles': title,
+       'format': 'json',
+   }
+   links = []
+   while True:
+      json = _run_query(query_args, language)
+      for page_id in json['query']['pages']:
+          if 'links' in json['query']['pages'][page_id].keys():
+              for category in json['query']['pages'][page_id]['links']:
+                  links.append(category['title'])
+      if 'query-continue' in json:
+          continue_item = json['query-continue']['links']['plcontinue']
+          query_args['plcontinue'] = continue_item
+      else:
+          break
+   return links
+
 
 
 def query_revision_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='newer', limit=10):
