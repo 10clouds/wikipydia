@@ -53,6 +53,7 @@ def opensearch(query, language='en'):
     return _run_query(query_args, language)
 
 
+
 def get_page_id(title, query_results):
    """
    Extracts the title's pageid from the query results.
@@ -69,6 +70,21 @@ def get_page_id(title, query_results):
        if title == query_results['query']['pages'][page]['title']:
           return str(query_results['query']['pages'][page]['pageid'])
    return str(-1)
+
+
+def query_page_id(title, language='en'):
+   """
+   Queries for the title's pageid.
+   """
+   url = api_url % (language)
+   query_args = {
+       'action': 'query',
+       'prop': 'info',
+       'titles': title,
+       'format': 'json',
+   }
+   json = _run_query(query_args, language)
+   return get_page_id(title, json)
 
 
 def query_language_links(title, language='en', limit=250):
@@ -144,6 +160,28 @@ def query_category_members(category, language='en', limit=100):
    return members[0:limit]
 
 
+def query_random_titles(language='en', num_items=10):
+   """
+   action=query,list=random
+   Queries wikipedia multiple times to get random pages from namespace 0
+   """
+   url = api_url % (language)
+   query_args = {
+       'action': 'query',
+       'list': 'random',
+       'format': 'json',
+   }
+   random_titles = []
+   while len(random_titles) < num_items:
+      json = _run_query(query_args, language)
+      for random_page in json['query']['random']:
+          if random_page['ns'] == 0:
+              random_titles.append(random_page['title'])
+   return random_titles
+
+
+
+
 def query_links(title, language='en'):
    """
    action=query,prop=categories
@@ -173,22 +211,22 @@ def query_links(title, language='en'):
 
 
 def query_revision_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='newer', limit=10):
-"""
-   Queries wikipeida for revisions of an article on a certain date.  
-   CCB: I'm not quite sure what I should be returning just yet...
-   """
-   url = api_url % (language)
-   query_args = {
-       'action': 'query',
-       'format': 'json',
-       'prop': 'revisions',
-       'titles': title,
-       'rvdir': direction,
-       'rvlimit': limit,
-       'rvstart': date.strftime("%Y%m%d")+time
-   }
-   json = _run_query(query_args, language)
-   return json
+    """
+    Queries wikipeida for revisions of an article on a certain date.  
+    CCB: I'm not quite sure what I should be returning just yet...
+    """
+    url = api_url % (language)
+    query_args = {
+        'action': 'query',
+        'format': 'json',
+        'prop': 'revisions',
+        'titles': title,
+        'rvdir': direction,
+        'rvlimit': limit,
+        'rvstart': date.strftime("%Y%m%d")+time
+        }
+    json = _run_query(query_args, language)
+    return json
 
 
 def query_revision_diffs(rev_id_1, rev_id_2, language='en'):
@@ -253,6 +291,29 @@ def query_text_raw(title, language='en'):
             'revid': json['query']['pages'][page_id]['lastrevid'],
         }
         return response
+
+
+def query_random_titles(language='en', num_items=10):
+    """
+    action=query,list=random
+    Queries wikipedia multiple times to get random articles
+    """
+    url = api_url % (language)
+    query_args = {
+        'action': 'query',
+        'list': 'random',
+        'format': 'json',
+        'rnnamespace': '0',
+        'rnlimit': '10',
+    } 
+    random_titles = []
+    while len(random_titles) < num_items:
+        json = _run_query(query_args, language)
+        for random_page in json['query']['random']:
+            random_titles.append(random_page['title'])
+    return random_titles
+ 
+
 
 def query_text_rendered(page, language='en'):
     """
