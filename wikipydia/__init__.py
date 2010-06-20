@@ -27,8 +27,7 @@ def _unicode_urlencode(params):
     """
     if isinstance(params, dict):
         params = params.items()
-    return urllib.urlencode([(k, isinstance(v, unicode) and v.encode('utf-8') or v)
-                             for k, v in params])
+    return urllib.urlencode([(k, isinstance(v, unicode) and v.encode('utf-8') or v) for k, v in params])
 
 def _run_query(args, language):
     """
@@ -65,7 +64,6 @@ def get_page_id(title, query_results):
        for normalized in query_results['query']['normalized']:
            if title == normalized['from']:
               title = normalized['to']
-              break
    for page in query_results['query']['pages']:
        if title == query_results['query']['pages'][page]['title']:
           return str(query_results['query']['pages'][page]['pageid'])
@@ -108,6 +106,7 @@ def query_language_links(title, language='en', limit=250):
        lang_links = dict([(ll['lang'],ll['*']) for ll in json['query']['pages'][page_id]['langlinks']])
    return lang_links
 
+
 def query_categories(title, language='en'):
    """
    action=query,prop=categories
@@ -133,6 +132,7 @@ def query_categories(title, language='en'):
       else:
           break
    return categories
+
 
 def query_category_members(category, language='en', limit=100):
    """
