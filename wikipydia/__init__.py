@@ -85,6 +85,27 @@ def query_page_id(title, language='en'):
    return get_page_id(title, json)
 
 
+def query_revid_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='newer', limit=10):
+    """
+    Queries for the revision ID of an article on a certain date.  
+    This method can be used in conjuction with query_text_raw_by_revid
+    """
+    url = api_url % (language)
+    query_args = {
+        'action': 'query',
+        'format': 'json',
+        'prop': 'revisions',
+        'titles': title,
+        'rvdir': direction,
+        'rvlimit': limit,
+        'rvstart': date.strftime("%Y%m%d")+time
+        }
+    json = _run_query(query_args, language)
+    pageid = json['query']['pages'].keys()[0]
+    revid = json['query']['pages'][pageid]['revisions'][0]['revid']
+    return revid
+
+
 def query_language_links(title, language='en', limit=250):
    """
    action=query,prop=langlinks
@@ -246,6 +267,7 @@ def query_revision_diffs(rev_id_1, rev_id_2, language='en'):
    return json
 
 
+
 def query_page_view_stats(title, language='en', start_date=(datetime.date.today()-datetime.timedelta(1)), end_date=datetime.date.today()):
     """
     Queries stats.grok.se for the daily page views for wikipedia articles
@@ -292,6 +314,49 @@ def query_text_raw(title, language='en'):
         }
         return response
 
+def query_text_raw_by_revid(revid, language='en'):
+    """
+    action=query
+    Fetches the specified revision of an article in wikimarkup form
+    """
+    url = api_url % (language)
+    query_args = {
+        'action': 'query',
+        'rvprop': 'content',
+        'prop': 'info|revisions',
+        'format': 'json',
+        'revids': revid,
+        'redirects': ''
+    }
+    json = _run_query(query_args, language)
+    for page_id in json['query']['pages']:
+        response = {
+            'text': json['query']['pages'][page_id]['revisions'][0]['*'],
+            'revid': json['query']['pages'][page_id]['lastrevid'],
+        }
+        return response
+
+
+def query_text_rendered_by_revid(revid, language='en'):
+    """
+    action=query
+    Fetches the specified revision of an article in HTML form
+    """
+    url = api_url % (language)
+    query_args = {
+        'action': 'parse',
+        'format': 'json',
+        'oldid': revid,
+        'redirects': ''
+    }
+    json = _run_query(query_args, language)
+    response = {
+        'html': json['parse']['text']['*'],
+        'revid': revid,
+    }
+    return response
+
+
 
 def query_random_titles(language='en', num_items=10):
     """
@@ -332,6 +397,8 @@ def query_text_rendered(page, language='en'):
         'revid': json['parse']['revid'],
     }
     return response
+
+
 
 def query_rendered_altlang(title, title_lang, target_lang):
     """
