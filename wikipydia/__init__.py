@@ -155,6 +155,33 @@ def query_categories(title, language='en'):
    return categories
 
 
+def query_categories_by_revid(revid, language='en'):
+   """
+   action=query,prop=categories
+   Returns a full list of categories for the revision id
+   """
+   url = api_url % (language)
+   query_args = {
+       'action': 'query',
+       'prop': 'categories',
+       'revids': revid,
+       'format': 'json',
+   }
+   categories = []
+   while True:
+      json = _run_query(query_args, language)
+      for page_id in json['query']['pages']:
+          if 'categories' in json['query']['pages'][page_id].keys():
+              for category in json['query']['pages'][page_id]['categories']:
+                  categories.append(category['title'])
+      if 'query-continue' in json:
+          continue_item = json['query-continue']['categories']['clcontinue']
+          query_args['clcontinue'] = continue_item
+      else:
+          break
+   return categories
+
+
 def query_category_members(category, language='en', limit=100):
    """
    action=query,prop=categories
@@ -229,6 +256,15 @@ def query_links(title, language='en'):
           break
    return links
 
+
+def query_links_by_revid(revid, language='en'):
+   """
+   action=query,prop=categories
+   Returns a full list of links on the page
+   """
+   text = query_text_raw_by_revision(revid)['text']
+   links = get_links(text).values()
+   return links
 
 
 def query_revision_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='newer', limit=10):
@@ -451,3 +487,66 @@ def get_links(wikified_text):
         linked_text[link[-1]] = link[0]
     return linked_text
 
+
+def get_externallinks(wikified_text):
+    """
+    Parses the wikipedia markup for a page and returns
+    a dict of rendered link text onto underlying wiki links
+    """
+    link_pattern = re.compile(r'\[[^[\]]*?\](?!\])')
+    linked_text = {}
+    iterator = link_pattern.finditer(wikified_text)
+    for match in iterator:
+        link = wikified_text[match.start()+1:match.end()-1].split(' ', 1)
+        linked_text[link[-1]] = link[0]
+    return linked_text
+
+
+def get_parsed_text(wikified_text, language='en'):
+    """
+    action=parse
+    Parse the given wiki text
+    """
+    query_args = {
+        'action': 'parse',
+        'text': wikified_text,
+        'format': 'json'
+    }
+    json = _run_query(query_args, language)
+    return json
+
+
+def get_plain_text(wikified_text):
+    """
+    Strip links and external links from the given text
+    """
+    link_pattern = re.compile(r'\[\[(.*?)\]\]')
+    link_stripped = link_pattern.sub(lambda x: x.group(1).split('|',1)[-1], wikified_text)
+    externallink_pattern = re.compile(r'\[.*?\]')
+    all_stripped = externallink_pattern.sub('', link_stripped)
+    return all_stripped.strip() 
+
+
+months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+def query_current_events(year, month, day):
+    """
+    Retrieves the current events for a specified date.
+    Currently only works for English.
+    """
+    date = str(year) + '_' + months[month-1] + '_' + str(day)
+    title = 'Portal:Current_events/' + date
+    text_raw = query_text_raw(title)
+    text = text_raw['text']
+    lines = text.splitlines()
+    response = []
+    for line in lines:
+        if not line.startswith('*'):
+            continue
+        event = {
+                'text' : get_plain_text(line),
+                'links' : get_links(line),
+                'externallinks' : get_externallinks(line),
+                'revid' : text_raw['revid']
+                }
+        response.append(event) 
+    return response
