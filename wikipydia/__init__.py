@@ -344,11 +344,13 @@ def query_text_raw(title, language='en'):
     }
     json = _run_query(query_args, language)
     for page_id in json['query']['pages']:
-        response = {
-            'text': json['query']['pages'][page_id]['revisions'][0]['*'],
-            'revid': json['query']['pages'][page_id]['lastrevid'],
-        }
-        return response
+        if page_id != -1 and 'missing' not in json['query']['pages'][page_id]:
+            response = {
+                'text': json['query']['pages'][page_id]['revisions'][0]['*'],
+                'revid': json['query']['pages'][page_id]['lastrevid'],
+            }
+            return response
+    return None
 
 def query_text_raw_by_revid(revid, language='en'):
     """
@@ -527,15 +529,15 @@ def get_plain_text(wikified_text):
     return all_stripped.strip() 
 
 
-months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-def query_current_events(year, month, day):
+def query_current_events(date):
     """
     Retrieves the current events for a specified date.
     Currently only works for English.
     """
-    date = str(year) + '_' + months[month-1] + '_' + str(day)
-    title = 'Portal:Current_events/' + date
+    title = 'Portal:Current_events/' + date.strftime("%Y_%B_") + str(date.day)
     text_raw = query_text_raw(title)
+    if not text_raw:
+        return None
     text = text_raw['text']
     lines = text.splitlines()
     response = []
