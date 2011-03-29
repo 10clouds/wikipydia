@@ -117,7 +117,7 @@ def query_normalized_title(title, language='en'):
 				title = pair['to']
 	return title
 
-def query_redirected_title(title, language='en'):
+def query_redirects(title, language='en'):
 	"""
 	Query the normalization of the title.
 	"""
