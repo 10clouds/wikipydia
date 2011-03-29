@@ -51,8 +51,6 @@ def opensearch(query, language='en'):
     }
     return _run_query(query_args, language)
 
-
-
 def get_page_id(title, query_results):
    """
    Extracts the title's pageid from the query results.
@@ -84,6 +82,63 @@ def query_page_id(title, language='en'):
    json = _run_query(query_args, language)
    return get_page_id(title, json)
 
+def query_exists(title, language='en'):
+	"""
+	Query if the page of the title exists.
+	"""
+	url = api_url % (language)
+	query_args = {
+		'action': 'query',
+		'prop': 'info',
+		'titles': title,
+		'format': 'json',
+	}
+	json = _run_query(query_args, language)
+	for page_id in json['query']['pages']:
+		if page_id != '-1' and 'missing' not in json['query']['pages'][page_id]:
+			return True
+	return False
+
+def query_normalized_title(title, language='en'):
+	"""
+	Query the normalization of the title.
+	"""
+	url = api_url % (language)
+	query_args = {
+		'action': 'query',
+		'prop': 'info',
+		'titles': title,
+		'format': 'json',
+	}
+	json = _run_query(query_args, language)
+	if 'normalized' in json['query']:
+		for pair in json['query']['normalized']:
+			if title == pair['from']:
+				title = pair['to']
+	return title
+
+def query_redirected_title(title, language='en'):
+	"""
+	Query the normalization of the title.
+	"""
+	url = api_url % (language)
+	query_args = {
+		'action': 'query',
+		'prop': 'info',
+		'titles': title,
+		'format': 'json',
+		'redirects': '',
+	}
+	json = _run_query(query_args, language)
+	if 'normalized' in json['query']:
+		for pair in json['query']['normalized']:
+			if title == pair['from']:
+				title = pair['to']
+	if 'redirects' in json['query']:
+		for pair in json['query']['redirects']:
+			if title == pair['from']:
+				title = pair['to']
+	return title
 
 def query_revid_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='newer', limit=10):
     """
