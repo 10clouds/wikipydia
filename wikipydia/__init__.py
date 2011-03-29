@@ -140,7 +140,7 @@ def query_redirects(title, language='en'):
 				title = pair['to']
 	return title
 
-def query_revid_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='newer', limit=10):
+def query_revid_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='older', limit=1):
     """
     Queries for the revision ID of an article on a certain date.  
     This method can be used in conjuction with query_text_raw_by_revid
