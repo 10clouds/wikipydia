@@ -93,6 +93,9 @@ def query_exists(title, language='en'):
 		'format': 'json',
 	}
 	json = _run_query(query_args, language)
+	# check if it is an inter-wiki title e.g. Commons:Main_Page
+	if 'pages' not in json['query']:
+		return True
 	for page_id in json['query']['pages']:
 		if page_id != '-1' and 'missing' not in json['query']['pages'][page_id]:
 			return True
