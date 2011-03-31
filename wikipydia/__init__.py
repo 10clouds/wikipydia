@@ -89,7 +89,6 @@ def query_exists(title, language='en'):
 	url = api_url % (language)
 	query_args = {
 		'action': 'query',
-		'prop': 'info',
 		'titles': title,
 		'format': 'json',
 	}
@@ -102,11 +101,11 @@ def query_exists(title, language='en'):
 def query_normalized_title(title, language='en'):
 	"""
 	Query the normalization of the title.
+	title is a Unicode string.
 	"""
 	url = api_url % (language)
 	query_args = {
 		'action': 'query',
-		'prop': 'info',
 		'titles': title,
 		'format': 'json',
 	}
@@ -120,11 +119,11 @@ def query_normalized_title(title, language='en'):
 def query_redirects(title, language='en'):
 	"""
 	Query the normalization of the title.
+	title is a Unicode string.
 	"""
 	url = api_url % (language)
 	query_args = {
 		'action': 'query',
-		'prop': 'info',
 		'titles': title,
 		'format': 'json',
 		'redirects': '',
@@ -142,7 +141,8 @@ def query_redirects(title, language='en'):
 
 def query_revid_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='older', limit=1):
     """
-    Queries for the revision ID of an article on a certain date.  
+    Query for the revision ID of an article on a certain date.  
+    Return 0 if no revision ID is found.
     This method can be used in conjuction with query_text_raw_by_revid
     """
     url = api_url % (language)
@@ -150,6 +150,7 @@ def query_revid_by_date(title, language='en', date=datetime.date.today(), time="
         'action': 'query',
         'format': 'json',
         'prop': 'revisions',
+		'rvprop': 'ids',
         'titles': title,
         'rvdir': direction,
         'rvlimit': limit,
@@ -157,6 +158,8 @@ def query_revid_by_date(title, language='en', date=datetime.date.today(), time="
         }
     json = _run_query(query_args, language)
     pageid = json['query']['pages'].keys()[0]
+    if 'revisions' not in json['query']['pages'][pageid]:
+        return 0
     revid = json['query']['pages'][pageid]['revisions'][0]['revid']
     return revid
 
