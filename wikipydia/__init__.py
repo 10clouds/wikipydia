@@ -89,11 +89,13 @@ def query_exists(title, language='en'):
 	url = api_url % (language)
 	query_args = {
 		'action': 'query',
-		'prop': 'info',
 		'titles': title,
 		'format': 'json',
 	}
 	json = _run_query(query_args, language)
+	# check if it is an inter-wiki title e.g. Commons:Main_Page
+	if 'pages' not in json['query']:
+		return False
 	for page_id in json['query']['pages']:
 		if page_id != '-1' and 'missing' not in json['query']['pages'][page_id]:
 			return True
@@ -102,12 +104,11 @@ def query_exists(title, language='en'):
 def query_normalized_title(title, language='en'):
 	"""
 	Query the normalization of the title.
-	The title argument is a Unicode string.
+	title is a Unicode string.
 	"""
 	url = api_url % (language)
 	query_args = {
 		'action': 'query',
-		'prop': 'info',
 		'titles': title,
 		'format': 'json',
 	}
@@ -121,12 +122,11 @@ def query_normalized_title(title, language='en'):
 def query_redirects(title, language='en'):
 	"""
 	Query the normalization of the title.
-	The title argument is a Unicode string.
+	title is a Unicode string.
 	"""
 	url = api_url % (language)
 	query_args = {
 		'action': 'query',
-		'prop': 'info',
 		'titles': title,
 		'format': 'json',
 		'redirects': '',
@@ -144,7 +144,8 @@ def query_redirects(title, language='en'):
 
 def query_revid_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='older', limit=1):
     """
-    Queries for the revision ID of an article on a certain date.  
+    Query for the revision ID of an article on a certain date.  
+    Return 0 if no revision ID is found.
     This method can be used in conjuction with query_text_raw_by_revid
     """
     url = api_url % (language)
@@ -152,6 +153,7 @@ def query_revid_by_date(title, language='en', date=datetime.date.today(), time="
         'action': 'query',
         'format': 'json',
         'prop': 'revisions',
+		'rvprop': 'ids',
         'titles': title,
         'rvdir': direction,
         'rvlimit': limit,
@@ -159,6 +161,8 @@ def query_revid_by_date(title, language='en', date=datetime.date.today(), time="
         }
     json = _run_query(query_args, language)
     pageid = json['query']['pages'].keys()[0]
+    if 'revisions' not in json['query']['pages'][pageid]:
+        return 0
     revid = json['query']['pages'][pageid]['revisions'][0]['revid']
     return revid
 
@@ -167,21 +171,21 @@ def query_revid_by_date_fallback(title, language='en', date=datetime.date.today(
 	"""
 	Query for revision ID of an article on a certain date.
 	If the article was moved later, it fallsback to the moved article.
-	Return a tuple containing (the fall-back title, revid)
 	The title argument is a Unicode string.
-	Assume title exists.
 	Return 0 if there exists no such an revision before the date.
 	"""
 	revid = query_revid_by_date(title, language, date, time=time, direction="older")
 	while not revid:
 		# the page was moved later
 		revid = query_revid_by_date(title, language, date, time=time, direction='newer')
+		if not revid:
+			return 0
 		redirects = query_text_raw_by_revid(revid, language)['text']
 		if not redirects.lower().startswith('#redirect [[') or not redirects.endswith(']]'):
-			return (title, 0)
+			return 0
 		title = redirects[12:-2]
 		revid = query_revid_by_date(title, language, date, time="235959", direction="older")
-	return (title, revid)
+	return revid
 
 
 def query_language_links(title, language='en', limit=250):
