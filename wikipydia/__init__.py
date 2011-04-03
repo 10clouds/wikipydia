@@ -102,6 +102,7 @@ def query_exists(title, language='en'):
 def query_normalized_title(title, language='en'):
 	"""
 	Query the normalization of the title.
+	The title argument is a Unicode string.
 	"""
 	url = api_url % (language)
 	query_args = {
@@ -120,6 +121,7 @@ def query_normalized_title(title, language='en'):
 def query_redirects(title, language='en'):
 	"""
 	Query the normalization of the title.
+	The title argument is a Unicode string.
 	"""
 	url = api_url % (language)
 	query_args = {
@@ -159,6 +161,27 @@ def query_revid_by_date(title, language='en', date=datetime.date.today(), time="
     pageid = json['query']['pages'].keys()[0]
     revid = json['query']['pages'][pageid]['revisions'][0]['revid']
     return revid
+
+
+def query_revid_by_date_fallback(title, language='en', date=datetime.date.today(), time="235959"):
+	"""
+	Query for revision ID of an article on a certain date.
+	If the article was moved later, it fallsback to the moved article.
+	Return a tuple containing (the fall-back title, revid)
+	The title argument is a Unicode string.
+	Assume title exists.
+	Return 0 if there exists no such an revision before the date.
+	"""
+	revid = query_revid_by_date(title, language, date, time=time, direction="older")
+	while not revid:
+		# the page was moved later
+		revid = query_revid_by_date(title, language, date, time=time, direction='newer')
+		redirects = query_text_raw_by_revid(revid, language)['text']
+		if not redirects.lower().startswith('#redirect [[') or not redirects.endswith(']]'):
+			return (title, 0)
+		title = redirects[12:-2]
+		revid = query_revid_by_date(title, language, date, time="235959", direction="older")
+	return (title, revid)
 
 
 def query_language_links(title, language='en', limit=250):
