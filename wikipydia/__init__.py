@@ -35,15 +35,15 @@ def _run_query(args, language, retry=5, wait=5):
     """
     url = api_url % (language)
     data = _unicode_urlencode(args)
-	while True:
-		try:
-			search_results = urllib.urlopen(url, data=data)
-		except IOError:
-			if not retry:
-				raise
-			retry--
-		else:
-			break
+    while True:
+        try:
+            search_results = urllib.urlopen(url, data=data)
+        except IOError:
+            if not retry:
+                raise
+            retry -= 1
+        else:
+            break
     json = simplejson.loads(search_results.read())
     return json
 
@@ -91,64 +91,64 @@ def query_page_id(title, language='en'):
    return get_page_id(title, json)
 
 def query_exists(title, language='en'):
-	"""
-	Query if the page of the title exists.
-	"""
-	url = api_url % (language)
-	query_args = {
-		'action': 'query',
-		'titles': title,
-		'format': 'json',
-	}
-	json = _run_query(query_args, language)
-	# check if it is an inter-wiki title e.g. Commons:Main_Page
-	if 'pages' not in json['query']:
-		return False
-	for page_id in json['query']['pages']:
-		if page_id != '-1' and 'missing' not in json['query']['pages'][page_id]:
-			return True
-	return False
+    """
+    Query if the page of the title exists.
+    """
+    url = api_url % (language)
+    query_args = {
+        'action': 'query',
+        'titles': title,
+        'format': 'json',
+    }
+    json = _run_query(query_args, language)
+    # check if it is an inter-wiki title e.g. Commons:Main_Page
+    if 'pages' not in json['query']:
+        return False
+    for page_id in json['query']['pages']:
+        if page_id != '-1' and 'missing' not in json['query']['pages'][page_id]:
+            return True
+    return False
 
 def query_normalized_title(title, language='en'):
-	"""
-	Query the normalization of the title.
-	title is a Unicode string.
-	"""
-	url = api_url % (language)
-	query_args = {
-		'action': 'query',
-		'titles': title,
-		'format': 'json',
-	}
-	json = _run_query(query_args, language)
-	if 'normalized' in json['query']:
-		for pair in json['query']['normalized']:
-			if title == pair['from']:
-				title = pair['to']
-	return title
+    """
+    Query the normalization of the title.
+    title is a Unicode string.
+    """
+    url = api_url % (language)
+    query_args = {
+        'action': 'query',
+        'titles': title,
+        'format': 'json',
+    }
+    json = _run_query(query_args, language)
+    if 'normalized' in json['query']:
+        for pair in json['query']['normalized']:
+            if title == pair['from']:
+                title = pair['to']
+    return title
 
 def query_redirects(title, language='en'):
-	"""
-	Query the normalization of the title.
-	title is a Unicode string.
-	"""
-	url = api_url % (language)
-	query_args = {
-		'action': 'query',
-		'titles': title,
-		'format': 'json',
-		'redirects': '',
-	}
-	json = _run_query(query_args, language)
-	if 'normalized' in json['query']:
-		for pair in json['query']['normalized']:
-			if title == pair['from']:
-				title = pair['to']
-	if 'redirects' in json['query']:
-		for pair in json['query']['redirects']:
-			if title == pair['from']:
-				title = pair['to']
-	return title
+    """
+    Query the normalization of the title.
+    title is a Unicode string.
+    """
+    url = api_url % (language)
+    query_args = {
+        'action': 'query',
+        'titles': title,
+        'format': 'json',
+        'redirects': '',
+    }
+    json = _run_query(query_args, language)
+    if 'normalized' in json['query']:
+        for pair in json['query']['normalized']:
+            if title == pair['from']:
+                title = pair['to']
+    if 'redirects' in json['query']:
+        for pair in json['query']['redirects']:
+            if title == pair['from']:
+                title = pair['to']
+    return title
 
 def query_revid_by_date(title, language='en', date=datetime.date.today(), time="000000", direction='older', limit=1):
     """
@@ -161,7 +161,7 @@ def query_revid_by_date(title, language='en', date=datetime.date.today(), time="
         'action': 'query',
         'format': 'json',
         'prop': 'revisions',
-		'rvprop': 'ids',
+        'rvprop': 'ids',
         'titles': title,
         'rvdir': direction,
         'rvlimit': limit,
@@ -176,24 +176,24 @@ def query_revid_by_date(title, language='en', date=datetime.date.today(), time="
 
 
 def query_revid_by_date_fallback(title, language='en', date=datetime.date.today(), time="235959"):
-	"""
-	Query for revision ID of an article on a certain date.
-	If the article was moved later, it fallsback to the moved article.
-	The title argument is a Unicode string.
-	Return 0 if there exists no such an revision before the date.
-	"""
-	revid = query_revid_by_date(title, language, date, time=time, direction="older")
-	while not revid:
-		# the page was moved later
-		revid = query_revid_by_date(title, language, date, time=time, direction='newer')
-		if not revid:
-			return 0
-		redirects = query_text_raw_by_revid(revid, language)['text']
-		if not redirects.lower().startswith('#redirect [[') or not redirects.endswith(']]'):
-			return 0
-		title = redirects[12:-2]
-		revid = query_revid_by_date(title, language, date, time="235959", direction="older")
-	return revid
+    """
+    Query for revision ID of an article on a certain date.
+    If the article was moved later, it fallsback to the moved article.
+    The title argument is a Unicode string.
+    Return 0 if there exists no such an revision before the date.
+    """
+    revid = query_revid_by_date(title, language, date, time=time, direction="older")
+    while not revid:
+        # the page was moved later
+        revid = query_revid_by_date(title, language, date, time=time, direction='newer')
+        if not revid:
+            return 0
+        redirects = query_text_raw_by_revid(revid, language)['text']
+        if not redirects.lower().startswith('#redirect [[') or not redirects.endswith(']]'):
+            return 0
+        title = redirects[12:-2]
+        revid = query_revid_by_date(title, language, date, time="235959", direction="older")
+    return revid
 
 
 def query_language_links(title, language='en', limit=250):
