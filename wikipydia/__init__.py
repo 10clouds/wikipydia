@@ -29,13 +29,21 @@ def _unicode_urlencode(params):
         params = params.items()
     return urllib.urlencode([(k, isinstance(v, unicode) and v.encode('utf-8') or v) for k, v in params])
 
-def _run_query(args, language):
+def _run_query(args, language, retry=5, wait=5):
     """
     takes arguments and optional language argument and runs query on server
     """
     url = api_url % (language)
     data = _unicode_urlencode(args)
-    search_results = urllib.urlopen(url, data=data)
+	while True:
+		try:
+			search_results = urllib.urlopen(url, data=data)
+		except IOError:
+			if not retry:
+				raise
+			retry--
+		else:
+			break
     json = simplejson.loads(search_results.read())
     return json
 
