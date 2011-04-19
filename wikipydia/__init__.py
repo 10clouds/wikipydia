@@ -108,9 +108,10 @@ def query_exists(title, language='en'):
 	# check if it is an inter-wiki title e.g. Commons:Main_Page
 	if 'pages' not in json['query']:
 		return False
-	for page_id in json['query']['pages']:
-		if page_id != '-1' and 'missing' not in json['query']['pages'][page_id]:
-			return True
+	for page_id, page_info in json['query']['pages'].items():
+		if int(page_id) > 0:
+			if 'missing' not in page_info and 'invalid' not in page_info:
+				return True
 	return False
 
 def query_normalized_title(title, language='en'):
@@ -458,7 +459,6 @@ def query_text_raw_by_revid(revid, language='en'):
 		'prop': 'info|revisions',
 		'format': 'json',
 		'revids': revid,
-		'redirects': ''
 	}
 	json = _run_query(query_args, language)
 	for page_id in json['query']['pages']:
@@ -479,7 +479,6 @@ def query_text_rendered_by_revid(revid, language='en'):
 		'action': 'parse',
 		'format': 'json',
 		'oldid': revid,
-		'redirects': ''
 	}
 	json = _run_query(query_args, language)
 	response = {
