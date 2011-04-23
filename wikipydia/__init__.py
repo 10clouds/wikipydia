@@ -196,7 +196,7 @@ def query_revid_by_date_fallback(title, language='en', date=datetime.date.today(
 		if not revid:
 			return 0
 		redirects = query_text_raw_by_revid(revid, language)['text']
-		if not redirects.lower().startswith('#redirect [[') or not redirects.endswith(']]'):
+		if not redirects or not redirects.lower().startswith('#redirect [[') or not redirects.endswith(']]'):
 			return 0
 		title = redirects[12:-2]
 		revid = query_revid_by_date(title, language, date, time="235959", direction="older")
@@ -463,12 +463,18 @@ def query_text_raw_by_revid(revid, language='en'):
 		'revids': revid,
 	}
 	json = _run_query(query_args, language)
-	for page_id in json['query']['pages']:
-		response = {
-			'text': json['query']['pages'][page_id]['revisions'][0]['*'],
-			'revid': json['query']['pages'][page_id]['lastrevid'],
-		}
-		return response
+	for page_id, page_info in json['query']['pages'].items():
+		if '*' in page_info['revisions'][0]:
+			response = {
+				'text': json['query']['pages'][page_id]['revisions'][0]['*'],
+				'revid': json['query']['pages'][page_id]['lastrevid'],
+			}
+			return response
+	response = {
+		'text': None,
+		'revid': 0,
+	}
+	return response
 
 
 def query_text_rendered_by_revid(revid, language='en'):
