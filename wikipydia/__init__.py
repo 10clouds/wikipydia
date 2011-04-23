@@ -458,7 +458,6 @@ def query_text_raw_by_revid(revid, language='en'):
 		'prop': 'info|revisions',
 		'format': 'json',
 		'revids': revid,
-		'redirects': ''
 	}
 	json = _run_query(query_args, language)
 	for page_id in json['query']['pages']:
@@ -479,7 +478,6 @@ def query_text_rendered_by_revid(revid, language='en'):
 		'action': 'parse',
 		'format': 'json',
 		'oldid': revid,
-		'redirects': ''
 	}
 	json = _run_query(query_args, language)
 	response = {
