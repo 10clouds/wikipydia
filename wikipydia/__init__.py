@@ -98,6 +98,8 @@ def query_exists(title, language='en'):
 	"""
 	Query if the page of the title exists.
 	"""
+	if title.find('|') != -1:
+		return False
 	url = api_url % (language)
 	query_args = {
 		'action': 'query',
