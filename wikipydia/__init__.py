@@ -41,7 +41,7 @@ def _run_query(args, language, retry=5, wait=5):
 	while True:
 		try:
 			search_results = urllib.urlopen(url, data=data)
-		except IOError:
+		except:
 			if not retry:
 				raise
 			retry -= 1
