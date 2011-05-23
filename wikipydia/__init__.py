@@ -41,6 +41,7 @@ def _run_query(args, language, retry=5, wait=5):
 	while True:
 		try:
 			search_results = urllib.urlopen(url, data=data)
+			json = simplejson.loads(search_results.read())
 		except:
 			if not retry:
 				raise
@@ -48,7 +49,6 @@ def _run_query(args, language, retry=5, wait=5):
 			time.sleep(wait)
 		else:
 			break
-	json = simplejson.loads(search_results.read())
 	return json
 
 
