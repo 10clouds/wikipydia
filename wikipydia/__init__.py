@@ -11,7 +11,7 @@ jd@j2labs.net
 """
 
 import urllib
-import simplejson
+import json as simplejson
 
 import calendar
 import datetime
@@ -591,6 +591,22 @@ def get_links(wikified_text):
 	return linked_text
 
 
+def get_article_titles(wikified_text):
+	"""
+	Parses the wikipedia markup for a page and returns
+	an array of article titles linked
+	Will change unicode string to UTF-8
+	"""
+	link_pattern = re.compile('\[\[.*?\]\]')
+	linked_text = []
+	iterator = link_pattern.finditer(wikified_text)
+	for match in iterator:
+		link = wikified_text[match.start()+2:match.end()-2].split('|', 1)
+		link_title = link[0].encode("utf-8")
+		linked_text.append(link_title.replace(' ', '_'))
+	return linked_text
+
+
 def get_externallinks(wikified_text):
 	"""
 	Parses the wikipedia markup for a page and returns
@@ -629,27 +645,35 @@ def get_plain_text(wikified_text):
 	all_stripped = externallink_pattern.sub('', link_stripped)
 	return all_stripped.strip() 
 
+def query_current_events(date, numDays=1):
+    """
+    Retrieves the current events for a specified date.
+    Can also retrieve the previous dates if needed.
+    Currently only works for English.
+    """
+    response = []
+    oneday = datetime.timedelta(days=1)
+    for i in range(0, numDays):
+        date = date - oneday
+        title = 'Portal:Current_events/' + date.strftime("%Y_%B_") + str(date.day)
+        text_raw = query_text_raw(title)
+        if not text_raw:
+            return None
+        text = text_raw['text']
+        lines = text.splitlines()
+        for line in lines:
+            if not line.startswith('*'):
+                continue
+	    response.extend(get_article_titles(line))
+    return response
 
-def query_current_events(date):
-	"""
-	Retrieves the current events for a specified date.
-	Currently only works for English.
-	"""
-	title = 'Portal:Current_events/' + date.strftime("%Y_%B_") + str(date.day)
-	text_raw = query_text_raw(title)
-	if not text_raw:
-		return None
-	text = text_raw['text']
-	lines = text.splitlines()
-	response = []
-	for line in lines:
-		if not line.startswith('*'):
-			continue
-		event = {
-				'text' : get_plain_text(line),
-				'links' : get_links(line),
-				'externallinks' : get_externallinks(line),
-				'revid' : text_raw['revid']
-				}
-		response.append(event) 
-	return response
+    """
+    For now, we just need the article title
+    event = {
+    'text' : get_plain_text(line),
+    'links' : get_links(line),
+    'externallinks' : get_externallinks(line),
+    'revid' : text_raw['revid']
+    }
+    response.append(event)
+    """
