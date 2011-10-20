@@ -16,6 +16,8 @@ import json as simplejson
 import calendar
 import datetime
 
+import os
+import sys
 import time
 
 import re
@@ -502,19 +504,20 @@ def query_random_titles(language='en', num_items=10):
 	action=query,list=random
 	Queries wikipedia multiple times to get random articles
 	"""
+
 	url = api_url % (language)
 	query_args = {
 		'action': 'query',
 		'list': 'random',
 		'format': 'json',
 		'rnnamespace': '0',
-		'rnlimit': '10',
+		'rnlimit': str(num_items),
 	} 
 	random_titles = []
 	while len(random_titles) < num_items:
 		json = _run_query(query_args, language)
 		for random_page in json['query']['random']:
-			random_titles.append(random_page['title'])
+			random_titles.append(random_page['title'].encode("utf-8").replace(' ', '_'))
 	return random_titles
  
 
@@ -575,6 +578,20 @@ def get_sections(wikified_text):
 	contents.append(content)
 	return dict([('headers', headers), ('contents', contents)])
 
+
+def get_first_section(wikified_text):
+        """
+        Parses the wikipedia markup for a page and returns
+	the firs tsection
+        """
+        title_pattern = re.compile('==.*?==')
+        iterator = title_pattern.finditer(wikified_text)
+        content_start = 0
+	content = ''
+        for match in iterator:
+                content = wikified_text[content_start:match.start()].encode("utf-8")
+		break
+	return content
 
 
 def get_links(wikified_text):
@@ -644,6 +661,79 @@ def get_plain_text(wikified_text):
 	externallink_pattern = re.compile(r'\[.*?\]')
 	all_stripped = externallink_pattern.sub('', link_stripped)
 	return all_stripped.strip() 
+
+
+def get_positive_controls(language, date, num_days):
+	"""returns the positive controls for the HIT"""
+	current_news = query_current_events(date, num_days)
+	top_news = {}
+
+	wikitopics_path = os.environ['WIKITOPICS']
+
+	articles_path = wikitopics_path + "/data/articles/" + language + "/" + str(date.year) + "/"
+	for i in range(0, num_days):
+		previousdays = datetime.timedelta(days=i)
+		new_date = date - previousdays;
+		article_date = new_date.strftime("%Y-%m-%d")
+		articles = articles_path + article_date
+		if (os.path.exists(articles)):
+			listing = os.listdir(articles)
+			for infile in listing:
+				if infile[-2:] == "es":
+					top_news[infile[:-10]] = article_date
+
+	intersection = list(set(current_news) & set(top_news.keys()))
+
+	for key,value in top_news.items():
+		if key not in intersection:
+			del top_news[key]
+
+	"""
+	For debugging
+	print current_news
+	print "\n\n\n\n"
+	print top_news
+	print "\n\n\n\n"
+	"""
+	return top_news
+
+
+def get_negative_controls(language, date, num_random=10, num_days=1):
+    """ returns the negative controls for the HIT """
+    random = query_random_titles(language, num_random)
+
+
+    """
+    For purpose of debugging the difference function for sets
+    (python generate_negative.py en 2011-05-11 50 15)
+    random.append('The_Pirate_Bay')
+    """
+
+    wikitopics_path = os.environ['WIKITOPICS']
+    articles_path = wikitopics_path + "/data/articles/" + language + "/" + str(date.year) + "/"
+
+    top_news = []
+    for i in range(0, num_days):
+        previousdays = datetime.timedelta(days=i)
+        new_date = date - previousdays;
+        articles = articles_path + new_date.strftime("%Y-%m-%d")
+        if (os.path.exists(articles)):
+            listing = os.listdir(articles)
+
+            for infile in listing:
+                if infile[-2:] == "es":
+                    top_news.append(infile[:-10])
+
+    difference = filter(lambda x:x not in top_news, random)
+
+    """
+    For debugging
+    print random
+    print "\n\n\n"
+    print top_news
+    print "\n\n\n"
+    """
+    return difference
 
 def query_current_events(date, numDays=1):
     """
