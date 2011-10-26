@@ -11,11 +11,13 @@ jd@j2labs.net
 """
 
 import urllib
-import simplejson
+import json as simplejson
 
 import calendar
 import datetime
 
+import os
+import sys
 import time
 
 import re
@@ -502,19 +504,20 @@ def query_random_titles(language='en', num_items=10):
 	action=query,list=random
 	Queries wikipedia multiple times to get random articles
 	"""
+
 	url = api_url % (language)
 	query_args = {
 		'action': 'query',
 		'list': 'random',
 		'format': 'json',
 		'rnnamespace': '0',
-		'rnlimit': '10',
+		'rnlimit': str(num_items),
 	} 
 	random_titles = []
 	while len(random_titles) < num_items:
 		json = _run_query(query_args, language)
 		for random_page in json['query']['random']:
-			random_titles.append(random_page['title'])
+			random_titles.append(random_page['title'].encode("utf-8").replace(' ', '_'))
 	return random_titles
  
 
@@ -576,6 +579,20 @@ def get_sections(wikified_text):
 	return dict([('headers', headers), ('contents', contents)])
 
 
+def get_first_section(wikified_text):
+        """
+        Parses the wikipedia markup for a page and returns
+	the firs tsection
+        """
+        title_pattern = re.compile('==.*?==')
+        iterator = title_pattern.finditer(wikified_text)
+        content_start = 0
+	content = ''
+        for match in iterator:
+                content = wikified_text[content_start:match.start()].encode("utf-8")
+		break
+	return content
+
 
 def get_links(wikified_text):
 	"""
@@ -588,6 +605,22 @@ def get_links(wikified_text):
 	for match in iterator:
 		link = wikified_text[match.start()+2:match.end()-2].split('|', 1)
 		linked_text[link[-1]] = link[0]
+	return linked_text
+
+
+def get_article_titles(wikified_text):
+	"""
+	Parses the wikipedia markup for a page and returns
+	an array of article titles linked
+	Will change unicode string to UTF-8
+	"""
+	link_pattern = re.compile('\[\[.*?\]\]')
+	linked_text = []
+	iterator = link_pattern.finditer(wikified_text)
+	for match in iterator:
+		link = wikified_text[match.start()+2:match.end()-2].split('|', 1)
+		link_title = link[0].encode("utf-8")
+		linked_text.append(link_title.replace(' ', '_'))
 	return linked_text
 
 
@@ -630,26 +663,107 @@ def get_plain_text(wikified_text):
 	return all_stripped.strip() 
 
 
-def query_current_events(date):
+def get_positive_controls(language, date, num_days):
+	"""returns the positive controls for the HIT"""
+	current_news = query_current_events(date, num_days)
+	top_news = {}
+
+	wikitopics_path = os.environ['WIKITOPICS']
+
+	articles_path = wikitopics_path + "/data/articles/" + language + "/" + str(date.year) + "/"
+	for i in range(0, num_days):
+		previousdays = datetime.timedelta(days=i)
+		new_date = date - previousdays;
+		article_date = new_date.strftime("%Y-%m-%d")
+		articles = articles_path + article_date
+		if (os.path.exists(articles)):
+			listing = os.listdir(articles)
+			for infile in listing:
+				if infile[-2:] == "es":
+					top_news[infile[:-10]] = article_date
+
+	intersection = list(set(current_news) & set(top_news.keys()))
+
+	for key,value in top_news.items():
+		if key not in intersection:
+			del top_news[key]
+
 	"""
-	Retrieves the current events for a specified date.
-	Currently only works for English.
+	For debugging
+	print current_news
+	print "\n\n\n\n"
+	print top_news
+	print "\n\n\n\n"
 	"""
-	title = 'Portal:Current_events/' + date.strftime("%Y_%B_") + str(date.day)
-	text_raw = query_text_raw(title)
-	if not text_raw:
-		return None
-	text = text_raw['text']
-	lines = text.splitlines()
-	response = []
-	for line in lines:
-		if not line.startswith('*'):
-			continue
-		event = {
-				'text' : get_plain_text(line),
-				'links' : get_links(line),
-				'externallinks' : get_externallinks(line),
-				'revid' : text_raw['revid']
-				}
-		response.append(event) 
-	return response
+	return top_news
+
+
+def get_negative_controls(language, date, num_random=10, num_days=1):
+    """ returns the negative controls for the HIT """
+    random = query_random_titles(language, num_random)
+
+
+    """
+    For purpose of debugging the difference function for sets
+    (python generate_negative.py en 2011-05-11 50 15)
+    random.append('The_Pirate_Bay')
+    """
+
+    wikitopics_path = os.environ['WIKITOPICS']
+    articles_path = wikitopics_path + "/data/articles/" + language + "/" + str(date.year) + "/"
+
+    top_news = []
+    for i in range(0, num_days):
+        previousdays = datetime.timedelta(days=i)
+        new_date = date - previousdays;
+        articles = articles_path + new_date.strftime("%Y-%m-%d")
+        if (os.path.exists(articles)):
+            listing = os.listdir(articles)
+
+            for infile in listing:
+                if infile[-2:] == "es":
+                    top_news.append(infile[:-10])
+
+    difference = filter(lambda x:x not in top_news, random)
+
+    """
+    For debugging
+    print random
+    print "\n\n\n"
+    print top_news
+    print "\n\n\n"
+    """
+    return difference
+
+def query_current_events(date, numDays=1):
+    """
+    Retrieves the current events for a specified date.
+    Can also retrieve the previous dates if needed.
+    Currently only works for English.
+    """
+    response = []
+    oneday = datetime.timedelta(days=1)
+    for i in range(0, numDays):
+        date = date - oneday
+        title = 'Portal:Current_events/' + date.strftime("%Y_%B_") + str(date.day)
+        text_raw = query_text_raw(title)
+        if not text_raw:
+            return None
+        text = text_raw['text']
+        lines = text.splitlines()
+        for line in lines:
+            if not line.startswith('*'):
+                continue
+	    response.extend(get_article_titles(line))
+    return response
+
+    """
+    For now, we just need the article title
+    event = {
+    'text' : get_plain_text(line),
+    'links' : get_links(line),
+    'externallinks' : get_externallinks(line),
+    'revid' : text_raw['revid']
+    }
+    response.append(event)
+    """
