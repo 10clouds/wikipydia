@@ -586,8 +586,8 @@ def get_first_section(wikified_text):
     content_start = 0
     content = ''
     for match in iterator:
-            content = wikified_text[content_start:match.start()].encode("utf-8")
-    break
+        content = wikified_text[content_start:match.start()].encode("utf-8")
+        break
     return content
 
 
