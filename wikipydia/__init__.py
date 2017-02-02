@@ -10,19 +10,19 @@ http://github.com/j2labs/wikipydia
 jd@j2labs.net
 """
 
-import urllib
-import json as simplejson
-
 import calendar
 import datetime
-
+import json as simplejson
 import os
+import re
 import sys
 import time
+import urllib
 
-import re
+import requests
 
 api_url = 'http://%s.wikipedia.org/w/api.php'
+
 
 def _unicode_urlencode(params):
     """
@@ -33,6 +33,7 @@ def _unicode_urlencode(params):
         params = params.items()
     return urllib.urlencode([(k, isinstance(v, unicode) and v.encode('utf-8') or v) for k, v in params])
 
+
 def _run_query(args, language, retry=5, wait=5):
     """
     takes arguments and optional language argument and runs query on server
@@ -42,8 +43,7 @@ def _run_query(args, language, retry=5, wait=5):
     data = _unicode_urlencode(args)
     while True:
         try:
-            search_results = urllib.urlopen(url, data=data)
-            json = simplejson.loads(search_results.read())
+            return requests.get(url, params=args).json()
         except Exception:
             if not retry:
                 raise
@@ -51,7 +51,8 @@ def _run_query(args, language, retry=5, wait=5):
             time.sleep(wait)
         else:
             break
-    return json
+
+    return None
 
 
 def opensearch(query, language='en'):
